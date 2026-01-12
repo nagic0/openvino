@@ -585,7 +585,22 @@ void SyncInferRequest::allocate_input(const ov::Output<const ov::Node>& port, si
     const auto& shape = port.get_partial_shape();
     auto element_type = port.get_element_type();
 
-    m_user_inputs[input_idx] = { create_host_tensor(shape, element_type), TensorOwner::PLUGIN };
+    bool use_usm = m_graph->get_engine().use_unified_shared_memory();
+    const auto& device_info = m_graph->get_engine().get_device_info();
+    bool is_dgpu = device_info.dev_type == cldnn::device_type::discrete_gpu;
+    bool is_string = element_type == ov::element::string;
+    bool enable_usm_io = m_graph->get_config().get_enable_usm_io();
+
+    if (use_usm && is_dgpu && !is_string && enable_usm_io) {
+        auto params = ov::AnyMap{
+            {ov::intel_gpu::shared_mem_type.name(), ov::intel_gpu::SharedMemType::USM_SHARED_BUFFER}
+        };
+        auto remote_tensor = m_context->create_tensor(element_type, get_tensor_shape(shape), params);
+        m_user_inputs[input_idx] = { remote_tensor._ptr, TensorOwner::PLUGIN };
+    } else {
+        m_user_inputs[input_idx] = { create_host_tensor(shape, element_type), TensorOwner::PLUGIN };
+    }
+
     if (element_type == ov::element::string) {
         // In case the element type is string and input data is an empty string,
         // it produces the segmentation fault unless the each element of tensor.data is initialized.
@@ -596,10 +611,24 @@ void SyncInferRequest::allocate_input(const ov::Output<const ov::Node>& port, si
 }
 
 void SyncInferRequest::allocate_output(const ov::Output<const ov::Node>& port, size_t output_idx) {
+    OV_ITT_SCOPED_TASK(itt::domains::intel_gpu_plugin, "SyncInferRequest::allocate_outputs");
     const auto& shape = port.get_partial_shape();
     auto element_type = port.get_element_type();
 
-    m_user_outputs[output_idx] = { create_host_tensor(shape, element_type), TensorOwner::PLUGIN };
+    bool use_usm = m_graph->get_engine().use_unified_shared_memory();
+    const auto& device_info = m_graph->get_engine().get_device_info();
+    bool is_dgpu = device_info.dev_type == cldnn::device_type::discrete_gpu;
+    bool enable_usm_io = m_graph->get_config().get_enable_usm_io();
+
+    if (use_usm && is_dgpu && enable_usm_io) {
+        auto params = ov::AnyMap{
+            {ov::intel_gpu::shared_mem_type.name(), ov::intel_gpu::SharedMemType::USM_SHARED_BUFFER}
+        };
+        auto remote_tensor = m_context->create_tensor(element_type, get_tensor_shape(shape), params);
+        m_user_outputs[output_idx] = { remote_tensor._ptr, TensorOwner::PLUGIN };
+    } else {
+        m_user_outputs[output_idx] = { create_host_tensor(shape, element_type), TensorOwner::PLUGIN };
+    }
     ov::ISyncInferRequest::set_tensor(port, m_user_outputs.at(output_idx).ptr);
 }
 

@@ -151,7 +151,8 @@ public:
                                   {std::string(ov::intel_gpu::shared_mem_type.name()),
                                    {ov::Any(ov::intel_gpu::SharedMemType::USM_USER_BUFFER).as<std::string>(),
                                     ov::Any(ov::intel_gpu::SharedMemType::USM_HOST_BUFFER).as<std::string>(),
-                                    ov::Any(ov::intel_gpu::SharedMemType::USM_DEVICE_BUFFER).as<std::string>()}}});
+                                    ov::Any(ov::intel_gpu::SharedMemType::USM_DEVICE_BUFFER).as<std::string>(),
+                                    ov::Any(ov::intel_gpu::SharedMemType::USM_SHARED_BUFFER).as<std::string>()}}});
     }
 
     /**
@@ -339,6 +340,17 @@ public:
      */
     USMTensor create_usm_device_tensor(const element::Type type, const Shape& shape) {
         AnyMap params = {{ov::intel_gpu::shared_mem_type.name(), ov::intel_gpu::SharedMemType::USM_DEVICE_BUFFER}};
+        return create_tensor(type, shape, params).as<USMTensor>();
+    }
+
+    /**
+     * @brief This function is used to allocate USM tensor with shared allocation type
+     * @param type Tensor element type
+     * @param shape Tensor shape
+     * @return A remote tensor instance
+     */
+    USMTensor create_usm_shared_tensor(const element::Type type, const Shape& shape) {
+        AnyMap params = {{ov::intel_gpu::shared_mem_type.name(), ov::intel_gpu::SharedMemType::USM_SHARED_BUFFER}};
         return create_tensor(type, shape, params).as<USMTensor>();
     }
 };

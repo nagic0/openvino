@@ -53,6 +53,14 @@ static constexpr Property<std::map<std::string, uint64_t>, PropertyMutability::R
     "GPU_MEMORY_STATISTICS"};
 
 /**
+ * @brief RW property to enable USM IO for inputs/outputs on discrete GPU.
+ * Default value is false (use system memory and copy).
+ * If true, use shared USM for zero-copy.
+ * @ingroup ov_runtime_ocl_gpu_prop_cpp_api
+ */
+static constexpr Property<bool, PropertyMutability::RW> enable_usm_io{"GPU_ENABLE_USM_IO"};
+
+/**
  * @brief Turning on this key enables to unroll recurrent layers such as TensorIterator or Loop with fixed iteration
  * count. This key is turned on by default. Turning this key on will achieve better inference performance for loops with
  * not too many iteration counts (less than 16, as a rule of thumb). Turning this key off will achieve better

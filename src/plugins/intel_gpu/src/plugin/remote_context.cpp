@@ -138,6 +138,7 @@ ov::SoPtr<ov::IRemoteTensor> RemoteContextImpl::create_tensor(const ov::element:
 
         bool is_usm = mem_type == ov::intel_gpu::SharedMemType::USM_HOST_BUFFER ||
                       mem_type == ov::intel_gpu::SharedMemType::USM_DEVICE_BUFFER ||
+                      mem_type == ov::intel_gpu::SharedMemType::USM_SHARED_BUFFER ||
                       mem_type == ov::intel_gpu::SharedMemType::USM_USER_BUFFER;
 
         OPENVINO_ASSERT(!is_usm || m_engine->use_unified_shared_memory(),
@@ -150,6 +151,8 @@ ov::SoPtr<ov::IRemoteTensor> RemoteContextImpl::create_tensor(const ov::element:
             return { create_usm(type, shape, TensorType::BT_USM_HOST_INTERNAL), nullptr };
         } else if (ov::intel_gpu::SharedMemType::USM_DEVICE_BUFFER == mem_type) {
             return { create_usm(type, shape, TensorType::BT_USM_DEVICE_INTERNAL), nullptr };
+        } else if (ov::intel_gpu::SharedMemType::USM_SHARED_BUFFER == mem_type) {
+            return { create_usm(type, shape, TensorType::BT_USM_SHARED_INTERNAL), nullptr };
         } else {
             TensorType tensor_type;
             cldnn::shared_handle mem = nullptr;

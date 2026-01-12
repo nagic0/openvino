@@ -104,7 +104,8 @@ enum class SharedMemType {
     USM_HOST_BUFFER = 3,    //!< Shared USM pointer type with host allocation type allocated by plugin
     USM_DEVICE_BUFFER = 4,  //!< Shared USM pointer type with device allocation type allocated by plugin
     VA_SURFACE = 5,         //!< Shared video decoder surface or D3D 2D texture blob
-    DX_BUFFER = 6           //!< Shared D3D buffer blob
+    DX_BUFFER = 6,          //!< Shared D3D buffer blob
+    USM_SHARED_BUFFER = 7   //!< Shared USM pointer type with shared allocation type allocated by plugin
 };
 
 /** @cond INTERNAL */
@@ -124,6 +125,8 @@ inline std::ostream& operator<<(std::ostream& os, const SharedMemType& share_mem
         return os << "VA_SURFACE";
     case SharedMemType::DX_BUFFER:
         return os << "DX_BUFFER";
+    case SharedMemType::USM_SHARED_BUFFER:
+        return os << "USM_SHARED_BUFFER";
     default:
         OPENVINO_THROW("Unsupported memory type");
     }
@@ -146,6 +149,8 @@ inline std::istream& operator>>(std::istream& is, SharedMemType& share_mem_type)
         share_mem_type = SharedMemType::VA_SURFACE;
     } else if (str == "DX_BUFFER") {
         share_mem_type = SharedMemType::DX_BUFFER;
+    } else if (str == "USM_SHARED_BUFFER") {
+        share_mem_type = SharedMemType::USM_SHARED_BUFFER;
     } else {
         OPENVINO_THROW("Unsupported memory type: ", str);
     }

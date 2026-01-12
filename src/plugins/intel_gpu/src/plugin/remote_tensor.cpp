@@ -136,6 +136,7 @@ TensorType RemoteTensorImpl::allocation_type_to_tensor_type(cldnn::allocation_ty
     switch (t) {
     case cldnn::allocation_type::cl_mem: return TensorType::BT_BUF_INTERNAL;
     case cldnn::allocation_type::usm_host: return TensorType::BT_USM_HOST_INTERNAL;
+    case cldnn::allocation_type::usm_shared: return TensorType::BT_USM_SHARED_INTERNAL;
     case cldnn::allocation_type::usm_device: return TensorType::BT_USM_DEVICE_INTERNAL;
     default: return TensorType::BT_EMPTY;
     }
@@ -326,6 +327,10 @@ void RemoteTensorImpl::allocate() {
     }
     case TensorType::BT_USM_DEVICE_INTERNAL: {
         m_memory_object = engine.allocate_memory(m_layout, cldnn::allocation_type::usm_device, reset);
+        break;
+    }
+    case TensorType::BT_USM_SHARED_INTERNAL: {
+        m_memory_object = engine.allocate_memory(m_layout, cldnn::allocation_type::usm_shared, reset);
         break;
     }
     case TensorType::BT_BUF_SHARED: {

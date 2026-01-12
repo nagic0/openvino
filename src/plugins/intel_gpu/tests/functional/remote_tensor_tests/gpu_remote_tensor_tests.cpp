@@ -41,7 +41,8 @@ enum class RemoteTensorSharingType {
     USER_USM_DEVICE_TENSOR = 3,
     PLUGIN_USM_HOST_TENSOR = 4,
     PLUGIN_USM_DEVICE_TENSOR = 5,
-    PLUGIN_HOST_TENSOR = 6
+    PLUGIN_HOST_TENSOR = 6,
+    PLUGIN_USM_SHARED_TENSOR = 7
 };
 
 std::ostream& operator<<(std::ostream& stream, RemoteTensorSharingType sharing_type) {
@@ -53,6 +54,7 @@ std::ostream& operator<<(std::ostream& stream, RemoteTensorSharingType sharing_t
     case RemoteTensorSharingType::PLUGIN_USM_HOST_TENSOR: stream << "PLUGIN_USM_HOST_TENSOR"; break;
     case RemoteTensorSharingType::PLUGIN_USM_DEVICE_TENSOR: stream << "PLUGIN_USM_DEVICE_TENSOR"; break;
     case RemoteTensorSharingType::PLUGIN_HOST_TENSOR: stream << "PLUGIN_HOST_TENSOR"; break;
+    case RemoteTensorSharingType::PLUGIN_USM_SHARED_TENSOR: stream << "PLUGIN_USM_SHARED_TENSOR"; break;
     }
 
     return stream;
@@ -291,6 +293,26 @@ TEST_P(OVRemoteTensorInputBlob_Test, smoke_canInputRemoteTensor) {
                 err = ocl_instance->memcpy(ocl_instance->_queue, shared_buffer, buffer, imSize, true, nullptr, nullptr);
                 if (err != CL_SUCCESS)
                     FAIL() << "Failed to copy data from host buffer to USM device";
+            }
+
+            inf_req_shared.set_tensor(input, cldnn_tensor);
+            inf_req_shared.infer();
+
+            break;
+        }
+        case RemoteTensorSharingType::PLUGIN_USM_SHARED_TENSOR: {
+            if (!ocl_instance->supports_usm())
+                GTEST_SKIP();
+
+            auto cldnn_tensor = cldnn_context.create_usm_shared_tensor(input->get_element_type(), input_shape);
+            ASSERT_TRUE(cldnn_tensor.is<ov::intel_gpu::ocl::USMTensor>());
+            {
+                auto cl_tensor = cldnn_tensor.as<ov::intel_gpu::ocl::USMTensor>();
+                void* shared_buffer = cl_tensor.get();
+                auto alloc_type = ocl_instance->get_allocation_type(shared_buffer);
+                ASSERT_EQ(alloc_type, CL_MEM_TYPE_SHARED_INTEL);
+                void* buffer = fakeImageData.data();
+                std::memcpy(shared_buffer, buffer, imSize);
             }
 
             inf_req_shared.set_tensor(input, cldnn_tensor);
@@ -560,6 +582,38 @@ TEST_P(OVRemoteTensorInputBlob_Test, smoke_canInputOutputRemoteTensor) {
 
             break;
         }
+        case RemoteTensorSharingType::PLUGIN_USM_SHARED_TENSOR: {
+            if (!ocl_instance->supports_usm())
+                GTEST_SKIP();
+
+            auto input_remote_tensor = gpu_context.create_usm_shared_tensor(input->get_element_type(), input_shape);
+            auto output_remote_tensor = gpu_context.create_usm_shared_tensor(output->get_output_element_type(0), allocated_out_shape);
+            ASSERT_TRUE(input_remote_tensor.is<ov::intel_gpu::ocl::USMTensor>());
+            {
+                auto cl_tensor = input_remote_tensor.as<ov::intel_gpu::ocl::USMTensor>();
+                void* shared_buffer = cl_tensor.get();
+                auto alloc_type = ocl_instance->get_allocation_type(shared_buffer);
+                ASSERT_EQ(alloc_type, CL_MEM_TYPE_SHARED_INTEL);
+                void* buffer = input_data.data();
+                std::memcpy(shared_buffer, buffer, in_size);
+            }
+
+            inf_req_shared.set_tensor(input, input_remote_tensor);
+            inf_req_shared.set_tensor(output, output_remote_tensor);
+            inf_req_shared.infer();
+
+            {
+                auto cl_tensor = output_remote_tensor.as<ov::intel_gpu::ocl::USMTensor>();
+                void* shared_output_buffer = cl_tensor.get();
+
+                void* buffer = output_tensor_shared.data();
+                auto out_tensor = inf_req_shared.get_output_tensor();
+                ASSERT_EQ(out_tensor.get_shape(), output_shape);
+                std::memcpy(buffer, shared_output_buffer, out_size);
+            }
+
+            break;
+        }
         case RemoteTensorSharingType::PLUGIN_HOST_TENSOR: {
             auto input_tensor = gpu_context.create_host_tensor(input->get_element_type(), input_shape);
             auto output_tensor = gpu_context.create_host_tensor(output->get_output_element_type(0), allocated_out_shape);
@@ -607,7 +661,8 @@ INSTANTIATE_TEST_SUITE_P(
                                                                  RemoteTensorSharingType::USER_USM_DEVICE_TENSOR,
                                                                  RemoteTensorSharingType::PLUGIN_USM_HOST_TENSOR,
                                                                  RemoteTensorSharingType::PLUGIN_USM_DEVICE_TENSOR,
-                                                                 RemoteTensorSharingType::PLUGIN_HOST_TENSOR}),
+                                                                 RemoteTensorSharingType::PLUGIN_HOST_TENSOR,
+                                                                 RemoteTensorSharingType::PLUGIN_USM_SHARED_TENSOR}),
         ::testing::ValuesIn(ov_with_auto_batching),
         ::testing::ValuesIn(ov_dynamic)),
         OVRemoteTensorInputBlob_Test::getTestCaseName);

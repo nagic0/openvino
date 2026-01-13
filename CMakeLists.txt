@@ -41,6 +41,10 @@ project(OpenVINO
         HOMEPAGE_URL "https://docs.openvino.ai/2025/index.html"
         LANGUAGES C CXX)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+endif()
+
 find_package(OpenVINODeveloperScripts REQUIRED
              PATHS "${OpenVINO_SOURCE_DIR}/cmake/developer_package"
              NO_CMAKE_FIND_ROOT_PATH

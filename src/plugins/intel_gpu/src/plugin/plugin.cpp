@@ -25,10 +25,12 @@
 #include "intel_gpu/runtime/execution_config.hpp"
 #include "intel_gpu/runtime/internal_properties.hpp"
 #include "intel_gpu/runtime/itt.hpp"
+#include "intel_gpu/runtime/memory.hpp"
 #include "openvino/core/any.hpp"
 #include "openvino/core/deprecated.hpp"
 #include "openvino/pass/manager.hpp"
 #include "openvino/pass/visualize_tree.hpp"
+#include "openvino/runtime/tensor.hpp"
 #include "openvino/runtime/device_id_parser.hpp"
 #include "openvino/runtime/intel_gpu/properties.hpp"
 #include "openvino/runtime/internal_properties.hpp"
@@ -236,6 +238,10 @@ Plugin::Plugin() {
     m_compiled_model_runtime_properties["OV_VERSION"] = ov_version.buildNumber;
 }
 
+Plugin::~Plugin() {
+    ov::util::set_default_tensor_impl_generator(nullptr);
+}
+
 std::shared_ptr<ov::ICompiledModel> Plugin::compile_model(const std::shared_ptr<const ov::Model>& model, const ov::AnyMap& orig_config) const {
     OV_ITT_SCOPED_TASK(itt::domains::intel_gpu_plugin, "Plugin::compile_model");
     std::string device_id = get_device_id(orig_config);
@@ -304,6 +310,20 @@ ov::SoPtr<ov::IRemoteContext> Plugin::get_default_context(const AnyMap& params) 
 }
 
 void Plugin::set_property(const ov::AnyMap &config) {
+    std::cout << "Setting properties: " << config << std::endl;
+    auto it = config.find(ov::intel_gpu::default_usm_host_tensor_allocation.name());
+    if (it != config.end()) {
+        if (it->second.as<bool>()) {
+            auto context = get_default_context("0");
+            ov::util::set_default_tensor_impl_generator([context](const element::Type& type, const Shape& shape) {
+                auto usm_host_tensor = context->create_host_tensor(type, shape);
+                return usm_host_tensor._ptr;
+            });
+        } else {
+            ov::util::set_default_tensor_impl_generator(nullptr);
+        }
+    }
+
     auto update_config = [](ExecutionConfig& config, const ov::AnyMap& user_config) {
         config.set_user_property(user_config, OptionVisibility::RELEASE);
         // Check that custom layers config can be loaded
@@ -711,6 +731,7 @@ std::vector<ov::PropertyName> Plugin::get_supported_properties() const {
         ov::PropertyName{ov::intel_gpu::hint::enable_lora_operation.name(), PropertyMutability::RW},
         ov::PropertyName{ov::intel_gpu::enable_loop_unrolling.name(), PropertyMutability::RW},
         ov::PropertyName{ov::intel_gpu::disable_winograd_convolution.name(), PropertyMutability::RW},
+        ov::PropertyName{ov::intel_gpu::default_usm_host_tensor_allocation.name(), PropertyMutability::RW},
         ov::PropertyName{ov::cache_dir.name(), PropertyMutability::RW},
         ov::PropertyName{ov::cache_mode.name(), PropertyMutability::RW},
         ov::PropertyName{ov::hint::performance_mode.name(), PropertyMutability::RW},

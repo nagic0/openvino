@@ -789,6 +789,13 @@ std::vector<cldnn::event::ptr> SyncInferRequest::prepare_input(const std::string
     GPU_DEBUG_TRACE_DETAIL << "    port shape       : " << pshape.to_string() << std::endl;
     GPU_DEBUG_TRACE_DETAIL << "    user_tensor shape: " << user_tensor->get_shape().to_string() << std::endl;
 
+    // std::cout << "Prepare input for " << internal_name
+    //           << " (is_remote_tensor_impl ? " << is_remote_tensor_impl
+    //           << ", is_usm_host_tensor ? " << is_usm_host_tensor
+    //           << ", is_generic_remote ? " << is_generic_remote << ")" << std::endl;
+    // std::cout << "    port shape       : " << pshape.to_string() << std::endl;
+    // std::cout << "    user_tensor shape: " << user_tensor->get_shape().to_string() << std::endl;
+
     auto network = m_graph->get_network();
     auto& engine = m_graph->get_engine();
     auto& stream = network->get_stream();
@@ -911,6 +918,8 @@ std::vector<cldnn::event::ptr> SyncInferRequest::prepare_input(const std::string
                 // The current input_layout (wait_for_events) does not provide proper synchronization for subsequent CPU implementations
                 // For IOQ, it creates an already set user event, leading to accessing memory that hasn't completed copying
                 // For OOOQ, it enqueues a barrier that is ignored by the memory_lock functions, also causing access to not ready memory
+                // std::cout << internal_name << " with index " << input_idx << " copy to: " << memory->buffer_ptr() << " from "
+                //           << user_tensor->data() << std::endl;
                 ret_event = memory->copy_from(stream, src_ptr, need_lockable_mem);
             }
         } else if (is_generic_remote) {
@@ -920,6 +929,8 @@ std::vector<cldnn::event::ptr> SyncInferRequest::prepare_input(const std::string
 
     GPU_DEBUG_TRACE_DETAIL << internal_name << " with index " << input_idx << " prepare input: " << memory->buffer_ptr()
                            << " alloc_type: " << memory->get_allocation_type() << std::endl;
+    // std::cout << internal_name << " with index " << input_idx << " prepare input: " << memory->buffer_ptr()
+    //           << " alloc_type: " << memory->get_allocation_type() << std::endl;
     network->set_input_data(internal_name, memory);
 
     if (ret_event && !ret_event->is_set())
@@ -945,6 +956,9 @@ std::vector<cldnn::event::ptr> SyncInferRequest::prepare_output(size_t output_id
     GPU_DEBUG_TRACE_DETAIL << "Prepare output for " << internal_name << std::endl;
     GPU_DEBUG_TRACE_DETAIL << "    port shape       : " << pshape.to_string() << std::endl;
     GPU_DEBUG_TRACE_DETAIL << "    user_tensor shape: " << user_tensor->get_shape().to_string() << std::endl;
+    // std::cout << "Prepare output for " << internal_name << std::endl;
+    // std::cout << "    port shape       : " << pshape.to_string() << std::endl;
+    // std::cout << "    user_tensor shape: " << user_tensor->get_shape().to_string() << std::endl;
 
     if (user_tensor->get_size() > 0) {
         OPENVINO_ASSERT(pshape.compatible(ov::PartialShape(user_tensor->get_shape())),

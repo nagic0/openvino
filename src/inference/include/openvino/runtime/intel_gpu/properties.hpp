@@ -45,6 +45,12 @@ static constexpr Property<std::string, PropertyMutability::RO> uarch_version{"GP
 static constexpr Property<int32_t, PropertyMutability::RO> execution_units_count{"GPU_EXECUTION_UNITS_COUNT"};
 
 /**
+ * @brief Property which forces all empty host tensors to be allocated as USM host tensors
+ * @ingroup ov_runtime_ocl_gpu_prop_cpp_api
+ */
+static constexpr Property<bool> default_usm_host_tensor_allocation{"DEFAULT_USM_HOST_TENSOR_ALLOCATION"};
+
+/**
  * @brief Read-only property to get statistics of GPU memory allocated by engine for each allocation type
  * It contains information about current memory usage
  * @ingroup ov_runtime_ocl_gpu_prop_cpp_api

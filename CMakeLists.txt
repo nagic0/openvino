@@ -41,8 +41,16 @@ project(OpenVINO
         HOMEPAGE_URL "https://docs.openvino.ai/2025/index.html"
         LANGUAGES C CXX)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Configuring for Debug build")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
+    # Check clang
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+    endif()
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Configuring for Release build")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 endif()
 
 find_package(OpenVINODeveloperScripts REQUIRED

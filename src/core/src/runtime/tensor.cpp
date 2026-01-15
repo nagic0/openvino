@@ -21,6 +21,30 @@
 
 namespace ov {
 
+namespace {
+ov::util::TensorImplGenerator& default_tensor_generator() {
+    static ov::util::TensorImplGenerator generator;
+    return generator;
+}
+
+std::shared_ptr<ITensor> create_tensor_impl(const element::Type& element_type,
+                                            const Shape& shape,
+                                            const Allocator& allocator) {
+    auto& default_generator = default_tensor_generator();
+    if (default_generator && allocator == Allocator()) {
+        return default_generator(element_type, shape);
+    }
+    return make_tensor(element_type, shape, allocator);
+}
+}  // namespace
+
+namespace util {
+void set_default_tensor_impl_generator(const TensorImplGenerator& generator) {
+    default_tensor_generator() = generator;
+    std::cout << "Default tensor implementation generator set." << std::endl;
+}
+}  // namespace util
+
 #define OV_TENSOR_STATEMENT(...)                                      \
     OPENVINO_ASSERT(_impl != nullptr, "Tensor was not initialized."); \
     try {                                                             \
@@ -48,7 +72,7 @@ Tensor::Tensor(const std::shared_ptr<ITensor>& impl, const std::shared_ptr<void>
 }
 
 Tensor::Tensor(const element::Type& element_type, const Shape& shape, const Allocator& allocator)
-    : _impl{make_tensor(element_type, shape, allocator)} {}
+    : _impl{create_tensor_impl(element_type, shape, allocator)} {}
 
 Tensor::Tensor(const element::Type& element_type, const Shape& shape, void* host_ptr, const Strides& byte_strides)
     : _impl{make_tensor(element_type, shape, host_ptr, byte_strides)} {}

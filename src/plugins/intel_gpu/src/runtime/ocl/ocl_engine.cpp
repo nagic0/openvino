@@ -5,6 +5,7 @@
 #include "ocl_engine.hpp"
 #include "intel_gpu/runtime/utils.hpp"
 #include "ocl/ocl_kernel.hpp"
+#include "ocl/ocl_ext.hpp"
 #include "ocl_common.hpp"
 #include "ocl_memory.hpp"
 #include "ocl_stream.hpp"

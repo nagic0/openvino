@@ -883,6 +883,8 @@ void ZeroInferRequest::infer_async() {
                                 userTensor.at(i)->get_byte_size(),
                                 get_level_zero_input(inputIndex, i)->get_byte_size());
                             OV_ITT_TASK_NEXT(ZERO_INFER, "memcpy");
+                            std::cout << "Memcpy input tensor batch " << i << " of size " << userTensor.at(i)->get_byte_size()
+                                      << std::endl;
                             std::memcpy(levelZeroBuffer, userBuffer, userTensor.at(i)->get_byte_size());
                         }
                     }
@@ -901,7 +903,9 @@ void ZeroInferRequest::infer_async() {
 
                     void* userBuffer = !userBatchRemoteTensor ? userTensor.at(i)->data()
                                                               : userBatchRemoteTensor->get_original_memory();
-
+                    
+                    std::cout << "Memcpy input tensor batch " << i << " of size " << userTensor.at(i)->get_byte_size()
+                              << std::endl;
                     std::memcpy(static_cast<unsigned char*>(levelZeroBuffer) + (i * userTensor.at(i)->get_byte_size()),
                                 userBuffer,
                                 userTensor.at(i)->get_byte_size());
@@ -938,6 +942,7 @@ void ZeroInferRequest::infer_async() {
             if (userBuffer != levelZeroBuffer) {
                 _logger.info("Tensor is not allocated in the current Level Zero context");
                 OV_ITT_TASK_NEXT(ZERO_INFER, "memcpy");
+                std::cout << "Memcpy input tensor index " << inputIndex << " of size " << userTensor.at(SINGLE_TENSOR)->get_byte_size() << std::endl;
                 std::memcpy(levelZeroBuffer, userBuffer, userTensor.at(SINGLE_TENSOR)->get_byte_size());
             }
         }
@@ -987,6 +992,7 @@ void ZeroInferRequest::get_result() {
                 _logger.info("Output tensor by index: %zu is not allocated in the current Level Zero context",
                              outputIndex);
                 OV_ITT_TASK_NEXT(ZERO_RESULT, "memcpy");
+                std::cout << "Memcpy output tensor index " << outputIndex << " of size " << userTensor->get_byte_size() << std::endl;
                 std::memcpy(userBuffer, levelZeroBuffer, userTensor->get_byte_size());
             }
         }
